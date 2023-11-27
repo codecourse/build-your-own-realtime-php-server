@@ -1,0 +1,48 @@
+{% extends 'app.twig' %}
+
+{% block content %}
+    Hello from {{ appName }}!
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        let connection = new autobahn.Connection({
+            url: 'ws://127.0.0.1:7474',
+            realm: 'default',
+            onchallenge: (session, method, extra) => {
+                if (method === 'token') {
+                    return 'nYj75QYjXLSsKlh0f9UnssQ2KGmJeegk'
+                }
+            },
+            authmethods: ['token']
+        })
+
+        connection.onopen = (session) => {
+            console.log('Connected')
+
+            session.subscribe('1_chat', (payload) => {
+                console.log('Received payload:', payload[0]);
+            })
+
+            axios.post('{{ base_url() }}/push/auth', {
+                channel: 'order.5.private',
+                session_id: session.id
+            }).then(() => {
+                session.subscribe('1_order.5.private', (payload) => {
+                    console.log('Received payload:', payload[0]);
+                })
+            })
+
+            axios.post('{{ base_url() }}/push/auth', {
+                channel: 'user.{{ user.id }}.private',
+                session_id: session.id
+            }).then(() => {
+                session.subscribe('1_user.{{ user.id }}.private', (payload) => {
+                    console.log('Received payload:', payload[0]);
+                })
+            })
+        }
+
+        connection.open()
+    </script>
+{% endblock %}
